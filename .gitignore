@@ -1,1 +1,15 @@
+# Ignore everything
+*
+
+# Allow directories (needed for git traversal)
+!*/
+
+# Explicitly ignore
 __pycache__/
+
+# Whitelist tracked files
+!.gitignore
+!init.lua
+!lazy-lock.json
+!test.md
+!lua/plugins/blink-cmp.lua
