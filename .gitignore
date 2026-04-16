@@ -12,4 +12,4 @@ __pycache__/
 !init.lua
 !lazy-lock.json
 !test.md
-!lua/plugins/blink-cmp.lua
+!lua/plugins/*.lua
