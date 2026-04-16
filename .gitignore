@@ -1,6 +1,6 @@
+__pycache__/
 # Ignore everything
 *
-__pycache__/
 
 # Allow directories (needed for git traversal)
 !*/
