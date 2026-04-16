@@ -5,6 +5,7 @@ return {
     opts = {
       completions = { lsp = { enabled = true } },
       heading = { enabled = false },
+      code = { enabled = false },
     },
   },
   {
