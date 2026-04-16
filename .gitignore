@@ -1,11 +1,9 @@
 # Ignore everything
 *
+__pycache__/
 
 # Allow directories (needed for git traversal)
 !*/
-
-# Explicitly ignore
-__pycache__/
 
 # Whitelist tracked files
 !.gitignore
