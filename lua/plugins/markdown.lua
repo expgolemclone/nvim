@@ -4,6 +4,7 @@ return {
     dependencies = { "nvim-treesitter/nvim-treesitter" },
     opts = {
       completions = { lsp = { enabled = true } },
+      heading = { enabled = false },
     },
   },
   {
