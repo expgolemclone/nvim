@@ -7,10 +7,8 @@ __pycache__/
 
 # Whitelist tracked files
 !.gitignore
-!ARCHITECTURE.md
 !init.lua
 !lazy-lock.json
 !test.md
 !lua/plugins/*.lua
 !test/*.py
-!test/*.lua
