@@ -4,6 +4,17 @@ end
 
 local cases = {
   {
+    name = "plain markdown line",
+    input = { "plain" },
+    expected = { "plain", "" },
+  },
+  {
+    name = "plain non-markdown line",
+    filetype = "text",
+    input = { "plain" },
+    expected = { "plain", "" },
+  },
+  {
     name = "dash list",
     input = { "- " },
     expected = { "- ", "- " },
@@ -81,7 +92,7 @@ local function run_case(index)
   end
 
   vim.cmd("enew!")
-  vim.bo.filetype = "markdown"
+  vim.bo.filetype = case.filetype or "markdown"
   vim.api.nvim_buf_set_lines(0, 0, -1, false, case.input)
   vim.api.nvim_win_set_cursor(0, { case.row or 1, 0 })
   vim.api.nvim_input("A")
