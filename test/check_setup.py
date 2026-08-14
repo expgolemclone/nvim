@@ -1,8 +1,9 @@
-"""Check nvim plugins, LSP servers, and formatters installation status."""
+"""Check nvim plugins, LSP servers, formatters, and runtime startup."""
 
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -21,7 +22,7 @@ MASON_LSP_PACKAGES: dict[str, str] = {
     "marksman": "marksman",
 }
 
-# Formatter name -> (executable base name, alternative names on Windows)
+# Formatter name -> executable base names
 FORMATTERS: dict[str, list[str]] = {
     "ruff_format": ["ruff"],
     "prettierd": ["prettierd"],
@@ -58,7 +59,7 @@ def check_plugins(data_dir: Path, plugins: dict[str, dict[str, str]]) -> tuple[i
             print(f"  OK    {name}")
             ok_count += 1
         else:
-            print(f"  FAIL  {name} — directory not found at {plugin_path}")
+            print(f"  FAIL  {name} - directory not found at {plugin_path}")
     return ok_count, len(plugins)
 
 
@@ -72,24 +73,19 @@ def check_mason_lsp(data_dir: Path) -> tuple[int, int]:
             print(f"  OK    {lsp_name} ({pkg_name})")
             ok_count += 1
         else:
-            print(f"  FAIL  {lsp_name} ({pkg_name}) — package not found")
+            print(f"  FAIL  {lsp_name} ({pkg_name}) - package not found")
     return ok_count, len(MASON_LSP_PACKAGES)
 
 
 def find_executable(name: str, search_paths: list[Path]) -> str | None:
     """Search for an executable in Mason bin and system PATH."""
-    # Check Mason bin first
     candidates = [name, f"{name}.cmd", f"{name}.exe"]
     for search_path in search_paths:
         for candidate in candidates:
             full = search_path / candidate
             if full.is_file():
                 return str(full)
-    # Check system PATH
-    found = shutil.which(name)
-    if found:
-        return found
-    return None
+    return shutil.which(name)
 
 
 def check_formatters(data_dir: Path) -> tuple[int, int]:
@@ -107,8 +103,57 @@ def check_formatters(data_dir: Path) -> tuple[int, int]:
             print(f"  OK    {fmt_name} ({found_path})")
             ok_count += 1
         else:
-            print(f"  FAIL  {fmt_name} — not found in Mason bin or PATH")
+            print(f"  FAIL  {fmt_name} - not found in Mason bin or PATH")
     return ok_count, len(FORMATTERS)
+
+
+def check_nvim_startup(config_dir: Path) -> tuple[int, int]:
+    """Start Neovim headlessly and force-load the command-lazy Markdown plugin."""
+    nvim = shutil.which("nvim")
+    if not nvim:
+        print("  FAIL  nvim - executable not found in PATH")
+        return 0, 1
+
+    smoke_lua = (
+        "require('lazy').load({ plugins = { 'markdown-preview.nvim' } }); "
+        "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied')"
+    )
+    command = [
+        nvim,
+        "--headless",
+        "-u",
+        str(config_dir / "init.lua"),
+        "-c",
+        f"lua {smoke_lua}",
+        "-c",
+        "qa!",
+    ]
+
+    try:
+        result = subprocess.run(
+            command,
+            cwd=config_dir,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=330,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        print("  FAIL  startup - timed out")
+        return 0, 1
+
+    if result.returncode == 0:
+        print("  OK    startup")
+        return 1, 1
+
+    print(f"  FAIL  startup - nvim exited with code {result.returncode}")
+    output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+    if output:
+        for line in output.splitlines():
+            print(f"        {line}")
+    return 0, 1
 
 
 def main() -> None:
@@ -116,7 +161,6 @@ def main() -> None:
     total_ok = 0
     total_all = 0
 
-    # lazy.nvim plugins
     print("=== lazy.nvim Plugins ===")
     plugins = load_lazy_lock(config_dir)
     ok, total = check_plugins(data_dir, plugins)
@@ -124,21 +168,24 @@ def main() -> None:
     total_all += total
     print()
 
-    # Mason LSP servers
     print("=== Mason LSP Servers ===")
     ok, total = check_mason_lsp(data_dir)
     total_ok += ok
     total_all += total
     print()
 
-    # Formatters
     print("=== Formatters ===")
     ok, total = check_formatters(data_dir)
     total_ok += ok
     total_all += total
     print()
 
-    # Summary
+    print("=== Neovim Startup ===")
+    ok, total = check_nvim_startup(config_dir)
+    total_ok += ok
+    total_all += total
+    print()
+
     print("=== Summary ===")
     print(f"Total: {total_ok}/{total_all} OK")
     print()
@@ -146,9 +193,9 @@ def main() -> None:
     if total_ok == total_all:
         print("All checks passed.")
         sys.exit(0)
-    else:
-        print(f"{total_all - total_ok} check(s) failed.")
-        sys.exit(1)
+
+    print(f"{total_all - total_ok} check(s) failed.")
+    sys.exit(1)
 
 
 if __name__ == "__main__":
