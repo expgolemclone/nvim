@@ -27,7 +27,7 @@ vim.g.maplocalleader = " "
 -- Bootstrap lazy.nvim
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 if not vim.uv.fs_stat(lazypath) then
-  vim.fn.system({
+  local out = vim.fn.system({
     "git",
     "clone",
     "--filter=blob:none",
@@ -35,6 +35,9 @@ if not vim.uv.fs_stat(lazypath) then
     "--branch=stable",
     lazypath,
   })
+  if vim.v.shell_error ~= 0 then
+    error("Failed to clone lazy.nvim:\n" .. out)
+  end
 end
 vim.opt.rtp:prepend(lazypath)
 
@@ -67,13 +70,6 @@ vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<CR>", { desc = "�
 
 -- Git
 vim.keymap.set("n", "<leader>gg", "<cmd>Neogit<CR>", { desc = "Neogit を開く" })
-
--- DAP
-vim.keymap.set("n", "<leader>db", "<cmd>lua require('dap').toggle_breakpoint()<CR>", { desc = "ブレークポイント" })
-vim.keymap.set("n", "<leader>dc", "<cmd>lua require('dap').continue()<CR>", { desc = "デバッグ続行" })
-vim.keymap.set("n", "<leader>do", "<cmd>lua require('dap').step_over()<CR>", { desc = "ステップオーバー" })
-vim.keymap.set("n", "<leader>di", "<cmd>lua require('dap').step_into()<CR>", { desc = "ステップイン" })
-vim.keymap.set("n", "<leader>du", "<cmd>lua require('dapui').toggle()<CR>", { desc = "DAP UI トグル" })
 
 -- マークダウン
 vim.keymap.set("n", "<leader>mp", "<cmd>MarkdownPreview<CR>", { desc = "MD プレビュー" })
