@@ -35,6 +35,11 @@ local function has_math_source(source)
   return false
 end
 
+local function has_html_source(source)
+  return source:find("<[%a][%w:_%-]*%s[^>]*>") ~= nil
+    or source:find("<[%a][%w:_%-]*>") ~= nil
+end
+
 local capture_sources = {
   markdown = [[
     (fenced_code_block) @code
@@ -110,11 +115,13 @@ end
 local function collect_items(buf, parser)
   local items = {}
   local seen = {}
+  local languages_seen = {}
   local query_cache = {}
 
   parser:parse()
   parser:for_each_tree(function(tree, language_tree)
     local language = language_tree:lang()
+    languages_seen[language] = true
     local root = tree:root()
 
     if language == "latex" then
@@ -177,7 +184,7 @@ local function collect_items(buf, parser)
     end
     return a.capture < b.capture
   end)
-  return items
+  return items, languages_seen
 end
 
 local function is_checkbox(text)
@@ -311,15 +318,9 @@ end
 
 local function screen_signature(win, item)
   center_item(win, item)
-  local pos = vim.fn.screenpos(win, item.start_row + 1, 1)
-  if type(pos) ~= "table" or not pos.row or pos.row == 0 then
-    return nil
-  end
-
   local result = {}
-  local first_row = math.max(1, pos.row - 1)
-  local last_row = math.min(vim.o.lines, pos.row + 1)
-  for screen_row = first_row, last_row do
+  local last_row = math.max(1, vim.o.lines - 2)
+  for screen_row = 1, last_row do
     local cells = {}
     for screen_col = 1, vim.o.columns do
       local char = vim.fn.screenstring(screen_row, screen_col)
@@ -387,21 +388,18 @@ local function main()
   vim.cmd("redraw")
 
   local parser = vim.treesitter.get_parser(buf, "markdown")
-  local items = collect_items(buf, parser)
+  local items, languages_seen = collect_items(buf, parser)
   if #items == 0 then
     fail("no renderable Markdown syntax was discovered in test.md")
   end
-
-  if config.latex.enabled and math_source then
-    local latex_count = 0
-    for _, item in ipairs(items) do
-      if item.language == "latex" then
-        latex_count = latex_count + 1
-      end
-    end
-    if latex_count == 0 then
-      fail("LaTeX syntax exists, but no injected latex syntax tree was produced")
-    end
+  if not languages_seen.markdown_inline then
+    fail("test.md contains inline Markdown, but no markdown_inline syntax tree was produced")
+  end
+  if config.html.enabled and has_html_source(source) and not languages_seen.html then
+    fail("test.md contains HTML, but no injected html syntax tree was produced")
+  end
+  if config.latex.enabled and math_source and not languages_seen.latex then
+    fail("LaTeX syntax exists, but no injected latex syntax tree was produced")
   end
 
   local ui = require("render-markdown.core.ui")
@@ -465,7 +463,7 @@ local function main()
         rm.render({ buf = buf, win = win, event = "InvariantTest" })
         vim.cmd("redraw")
 
-        if rendered ~= nil and raw ~= nil and rendered ~= raw then
+        if rendered ~= raw then
           stat.screen_diff = true
         end
       end
