@@ -6,40 +6,99 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
-# Mason LSP server name -> Mason package name
-MASON_LSP_PACKAGES: dict[str, str] = {
-    "pyright": "pyright",
-    "ruff": "ruff",
-    "ts_ls": "typescript-language-server",
-    "lua_ls": "lua-language-server",
-    "html": "html-lsp",
-    "cssls": "css-lsp",
-    "jsonls": "json-lsp",
-    "yamlls": "yaml-language-server",
-    "bashls": "bash-language-server",
-    "dockerls": "dockerfile-language-server",
-    "marksman": "marksman",
-}
-
-# Formatter name -> executable base names
-FORMATTERS: dict[str, list[str]] = {
-    "ruff_format": ["ruff"],
-    "prettierd": ["prettierd"],
-    "stylua": ["stylua"],
-    "shfmt": ["shfmt"],
-}
+from typing import Any
 
 
-def resolve_paths() -> tuple[Path, Path]:
-    """Resolve nvim config and data directory paths."""
-    local_appdata = os.environ.get("LOCALAPPDATA")
-    if not local_appdata:
-        print("FAIL  LOCALAPPDATA env var not found")
+def find_nvim() -> str:
+    """Find the Neovim executable."""
+    nvim = shutil.which("nvim")
+    if not nvim:
+        print("FAIL  nvim - executable not found in PATH")
         sys.exit(1)
-    config_dir = Path(local_appdata) / "nvim"
-    data_dir = Path(local_appdata) / "nvim-data"
-    return config_dir, data_dir
+    return nvim
+
+
+def run_nvim(
+    nvim: str,
+    args: list[str],
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+    timeout: int = 30,
+) -> subprocess.CompletedProcess[str]:
+    """Run Neovim with UTF-8 output handling."""
+    return subprocess.run(
+        [nvim, *args],
+        cwd=cwd,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
+        check=False,
+    )
+
+
+def resolve_paths(nvim: str) -> tuple[Path, Path]:
+    """Resolve the checkout root and Neovim data directory."""
+    config_dir = Path(__file__).resolve().parents[1]
+    result = run_nvim(
+        nvim,
+        [
+            "--headless",
+            "-u",
+            "NONE",
+            "-c",
+            "lua io.write(vim.fn.stdpath('data'))",
+            "-c",
+            "qa!",
+        ],
+    )
+    if result.returncode != 0 or not result.stdout.strip():
+        print("FAIL  unable to resolve Neovim data directory")
+        output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+        if output:
+            for line in output.splitlines():
+                print(f"      {line}")
+        sys.exit(1)
+
+    return config_dir, Path(result.stdout.strip())
+
+
+def load_tooling(nvim: str, config_dir: Path) -> dict[str, Any]:
+    """Load tooling metadata from the same Lua module used by the config."""
+    env = os.environ.copy()
+    env["NVIM_TOOLING_LUA"] = (config_dir / "lua").as_posix()
+    result = run_nvim(
+        nvim,
+        [
+            "--headless",
+            "-u",
+            "NONE",
+            "-c",
+            (
+                "lua package.path = vim.env.NVIM_TOOLING_LUA .. '/?.lua;' .. package.path; "
+                "io.write(vim.json.encode(require('tooling')))"
+            ),
+            "-c",
+            "qa!",
+        ],
+        env=env,
+    )
+    if result.returncode != 0:
+        print("FAIL  unable to load lua/tooling.lua")
+        output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+        if output:
+            for line in output.splitlines():
+                print(f"      {line}")
+        sys.exit(1)
+
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        print(f"FAIL  invalid tooling metadata: {exc}")
+        sys.exit(1)
 
 
 def load_lazy_lock(config_dir: Path) -> dict[str, dict[str, str]]:
@@ -63,18 +122,20 @@ def check_plugins(data_dir: Path, plugins: dict[str, dict[str, str]]) -> tuple[i
     return ok_count, len(plugins)
 
 
-def check_mason_lsp(data_dir: Path) -> tuple[int, int]:
-    """Check that each Mason LSP server package is installed."""
+def check_mason_lsp(data_dir: Path, lsp_servers: list[dict[str, str]]) -> tuple[int, int]:
+    """Check that every configured Mason LSP package is installed."""
     packages_dir = data_dir / "mason" / "packages"
     ok_count = 0
-    for lsp_name, pkg_name in sorted(MASON_LSP_PACKAGES.items()):
+    for server in sorted(lsp_servers, key=lambda item: item["name"]):
+        lsp_name = server["name"]
+        pkg_name = server["package"]
         pkg_path = packages_dir / pkg_name
         if pkg_path.is_dir():
             print(f"  OK    {lsp_name} ({pkg_name})")
             ok_count += 1
         else:
             print(f"  FAIL  {lsp_name} ({pkg_name}) - package not found")
-    return ok_count, len(MASON_LSP_PACKAGES)
+    return ok_count, len(lsp_servers)
 
 
 def find_executable(name: str, search_paths: list[Path]) -> str | None:
@@ -88,39 +149,35 @@ def find_executable(name: str, search_paths: list[Path]) -> str | None:
     return shutil.which(name)
 
 
-def check_formatters(data_dir: Path) -> tuple[int, int]:
-    """Check that each formatter executable is available."""
+def check_formatters(data_dir: Path, formatters: list[dict[str, str]]) -> tuple[int, int]:
+    """Check that every configured formatter executable is available."""
     mason_bin = data_dir / "mason" / "bin"
     search_paths = [mason_bin]
     ok_count = 0
-    for fmt_name, candidates in sorted(FORMATTERS.items()):
-        found_path = None
-        for candidate in candidates:
-            found_path = find_executable(candidate, search_paths)
-            if found_path:
-                break
+    for formatter in sorted(formatters, key=lambda item: item["name"]):
+        fmt_name = formatter["name"]
+        executable = formatter["executable"]
+        found_path = find_executable(executable, search_paths)
         if found_path:
             print(f"  OK    {fmt_name} ({found_path})")
             ok_count += 1
         else:
-            print(f"  FAIL  {fmt_name} - not found in Mason bin or PATH")
-    return ok_count, len(FORMATTERS)
+            print(f"  FAIL  {fmt_name} - {executable} not found in Mason bin or PATH")
+    return ok_count, len(formatters)
 
 
-def check_nvim_startup(config_dir: Path) -> tuple[int, int]:
+def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
     """Start Neovim headlessly and force-load the command-lazy Markdown plugin."""
-    nvim = shutil.which("nvim")
-    if not nvim:
-        print("  FAIL  nvim - executable not found in PATH")
-        return 0, 1
-
     smoke_lua = (
         "require('lazy').load({ plugins = { 'markdown-preview.nvim' } }); "
         "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied')"
     )
+    env = os.environ.copy()
+    env["NVIM_CONFIG_CHECKOUT"] = config_dir.as_posix()
     command = [
-        nvim,
         "--headless",
+        "--cmd",
+        "lua vim.opt.rtp:prepend(vim.env.NVIM_CONFIG_CHECKOUT)",
         "-u",
         str(config_dir / "init.lua"),
         "-c",
@@ -130,16 +187,7 @@ def check_nvim_startup(config_dir: Path) -> tuple[int, int]:
     ]
 
     try:
-        result = subprocess.run(
-            command,
-            cwd=config_dir,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=330,
-            check=False,
-        )
+        result = run_nvim(nvim, command, cwd=config_dir, env=env, timeout=330)
     except subprocess.TimeoutExpired:
         print("  FAIL  startup - timed out")
         return 0, 1
@@ -157,7 +205,9 @@ def check_nvim_startup(config_dir: Path) -> tuple[int, int]:
 
 
 def main() -> None:
-    config_dir, data_dir = resolve_paths()
+    nvim = find_nvim()
+    config_dir, data_dir = resolve_paths(nvim)
+    tooling = load_tooling(nvim, config_dir)
     total_ok = 0
     total_all = 0
 
@@ -169,19 +219,19 @@ def main() -> None:
     print()
 
     print("=== Mason LSP Servers ===")
-    ok, total = check_mason_lsp(data_dir)
+    ok, total = check_mason_lsp(data_dir, tooling["lsp_servers"])
     total_ok += ok
     total_all += total
     print()
 
     print("=== Formatters ===")
-    ok, total = check_formatters(data_dir)
+    ok, total = check_formatters(data_dir, tooling["formatters"])
     total_ok += ok
     total_all += total
     print()
 
     print("=== Neovim Startup ===")
-    ok, total = check_nvim_startup(config_dir)
+    ok, total = check_nvim_startup(nvim, config_dir)
     total_ok += ok
     total_all += total
     print()

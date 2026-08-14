@@ -6,7 +6,7 @@ return {
     flavour = "mocha",
     transparent_background = true,
     integrations = {
-      cmp = true,
+      blink_cmp = { style = "bordered" },
       gitsigns = true,
       neotree = true,
       treesitter = true,

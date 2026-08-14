@@ -33,12 +33,16 @@ local filetypes = {
 
 return {
   "nvim-treesitter/nvim-treesitter",
+  commit = "4916d6592ede8c07973490d9322f187e07dfefac",
   lazy = false,
-  build = ":TSUpdate",
+  build = function()
+    local treesitter = require("nvim-treesitter")
+    treesitter.update():wait(300000)
+    treesitter.install(parsers):wait(300000)
+  end,
   config = function()
     local treesitter = require("nvim-treesitter")
     treesitter.setup({})
-    treesitter.install(parsers):wait(300000)
 
     vim.api.nvim_create_autocmd("FileType", {
       pattern = filetypes,

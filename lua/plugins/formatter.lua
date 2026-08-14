@@ -1,14 +1,16 @@
+local tooling = require("tooling")
+
+local formatter_packages = {}
+for _, formatter in ipairs(tooling.formatters) do
+  formatter_packages[#formatter_packages + 1] = formatter.package
+end
+
 return {
   {
     "WhoIsSethDaniel/mason-tool-installer.nvim",
-    dependencies = { "williamboman/mason.nvim" },
+    dependencies = { "mason-org/mason.nvim" },
     opts = {
-      ensure_installed = {
-        "prettierd",
-        "ruff",
-        "shfmt",
-        "stylua",
-      },
+      ensure_installed = formatter_packages,
       auto_update = false,
       run_on_start = true,
       integrations = {
@@ -25,21 +27,7 @@ return {
         timeout_ms = 2000,
         lsp_format = "never",
       },
-      formatters_by_ft = {
-        python = { "ruff_format" },
-        javascript = { "prettierd" },
-        typescript = { "prettierd" },
-        javascriptreact = { "prettierd" },
-        typescriptreact = { "prettierd" },
-        html = { "prettierd" },
-        css = { "prettierd" },
-        json = { "prettierd" },
-        yaml = { "prettierd" },
-        markdown = { "prettierd" },
-        lua = { "stylua" },
-        sh = { "shfmt" },
-        bash = { "shfmt" },
-      },
+      formatters_by_ft = tooling.formatters_by_ft,
     },
   },
 }
