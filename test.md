@@ -62,7 +62,7 @@ _斜体 (Italic)_
 
 <https://example.com>
 
-![代替テキスト付き画像](https://via.placeholder.com/150 "画像タイトル")
+![代替テキスト付き画像](https://avatars.githubusercontent.com/u/190547141?s=200&v=4 "画像タイトル")
 
 ---
 
