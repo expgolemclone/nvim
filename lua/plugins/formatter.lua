@@ -23,7 +23,7 @@ return {
     opts = {
       format_on_save = {
         timeout_ms = 2000,
-        lsp_format = "fallback",
+        lsp_format = "never",
       },
       formatters_by_ft = {
         python = { "ruff_format" },
