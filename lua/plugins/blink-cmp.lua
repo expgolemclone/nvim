@@ -1,3 +1,7 @@
+local function normal_enter()
+  return vim.api.nvim_replace_termcodes("<CR>", true, false, true)
+end
+
 return {
   "saghen/blink.cmp",
   version = "*",
@@ -10,9 +14,8 @@ return {
       ["<CR>"] = {
         "accept",
         function()
-          return require("markdown_enter").continue_marker()
+          return require("markdown_enter").continue_marker() or normal_enter()
         end,
-        "fallback",
       },
     },
     sources = {
