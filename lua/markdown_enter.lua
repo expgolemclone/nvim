@@ -137,13 +137,8 @@ function M.continue_marker()
   local delete_after = after == "" and "" or termcodes("<C-o>D")
   local trailing_spaces = before:match("(%s*)$")
   local delete_trailing_spaces = marker.empty and "" or repeat_termcode("<BS>", #trailing_spaces)
-  local leading_indent = before:match("^(%s*)")
-  local marker_text = marker.text
-  if leading_indent ~= "" and marker_text:sub(1, #leading_indent) == leading_indent then
-    marker_text = marker_text:sub(#leading_indent + 1)
-  end
 
-  return delete_after .. delete_trailing_spaces .. termcodes("<C-g>u<CR>") .. marker_text
+  return delete_after .. delete_trailing_spaces .. termcodes("<C-g>u<CR><C-o>0<C-o>D") .. marker.text
 end
 
 return M
