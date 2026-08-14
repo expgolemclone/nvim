@@ -41,7 +41,27 @@ if not vim.uv.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
-require("lazy").setup("plugins")
+require("lazy").setup({
+  spec = { { import = "plugins" } },
+  ui = {
+    icons = {
+      cmd = "$ ",
+      config = "* ",
+      event = "@ ",
+      favorite = "* ",
+      ft = "file ",
+      init = "init ",
+      import = "import ",
+      keys = "key ",
+      lazy = "lazy ",
+      plugin = "plugin ",
+      runtime = "runtime ",
+      require = "require ",
+      source = "src ",
+      start = "start ",
+    },
+  },
+})
 
 -- Telescope
 vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>", { desc = "ファイル検索" })

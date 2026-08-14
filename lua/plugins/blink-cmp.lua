@@ -24,6 +24,11 @@ return {
     completion = {
       accept = { auto_brackets = { enabled = true } },
       documentation = { auto_show = true },
+      menu = {
+        draw = {
+          columns = { { "label", "label_description", gap = 1 } },
+        },
+      },
     },
   },
 }

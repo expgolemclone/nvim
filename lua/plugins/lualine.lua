@@ -1,7 +1,11 @@
 return {
   "nvim-lualine/lualine.nvim",
-  dependencies = { "nvim-tree/nvim-web-devicons" },
   opts = {
-    options = { theme = "catppuccin-nvim" },
+    options = {
+      theme = "catppuccin-nvim",
+      icons_enabled = false,
+      component_separators = "|",
+      section_separators = "",
+    },
   },
 }
