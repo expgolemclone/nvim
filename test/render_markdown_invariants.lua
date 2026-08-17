@@ -18,7 +18,7 @@ end
 
 local function parser_available(language)
   local ok, result = pcall(vim.treesitter.language.add, language)
-  return ok and result ~= false
+  return ok and result == true
 end
 
 local function read_source(buf)
@@ -118,7 +118,7 @@ local function collect_items(buf, parser)
   local languages_seen = {}
   local query_cache = {}
 
-  parser:parse()
+  parser:parse(true)
   parser:for_each_tree(function(tree, language_tree)
     local language = language_tree:lang()
     languages_seen[language] = true
@@ -332,6 +332,41 @@ local function screen_signature(win, item)
   return table.concat(result, "\29")
 end
 
+local function render_and_wait(rm, buf, win, context)
+  local decorator = require("render-markdown.core.ui").get(buf)
+  local previous = decorator.n
+  rm.render({ buf = buf, win = win, event = "InvariantTest" })
+  if not vim.wait(5000, function()
+    return decorator.n > previous
+  end, 10) then
+    fail(("timed out waiting for render-markdown update: %s"):format(context))
+  end
+  vim.cmd("redraw")
+end
+
+local function disable_and_wait(rm, buf)
+  local ui = require("render-markdown.core.ui")
+  rm.buf_disable()
+  if not vim.wait(5000, function()
+    return #vim.api.nvim_buf_get_extmarks(buf, ui.ns, 0, -1, {}) == 0
+  end, 10) then
+    fail("timed out waiting for render-markdown disable")
+  end
+  vim.cmd("redraw")
+end
+
+local function enable_and_wait(rm, buf)
+  local decorator = require("render-markdown.core.ui").get(buf)
+  local previous = decorator.n
+  rm.buf_enable()
+  if not vim.wait(5000, function()
+    return decorator.n > previous
+  end, 10) then
+    fail("timed out waiting for render-markdown enable")
+  end
+  vim.cmd("redraw")
+end
+
 local function excerpt(item)
   local line = vim.api.nvim_buf_get_lines(0, item.start_row, item.start_row + 1, false)[1] or ""
   line = vim.trim(line)
@@ -384,8 +419,7 @@ local function main()
     end
   end
 
-  rm.render({ buf = buf, win = win, event = "InvariantTest" })
-  vim.cmd("redraw")
+  render_and_wait(rm, buf, win, "initial render")
 
   local parser = vim.treesitter.get_parser(buf, "markdown")
   local items, languages_seen = collect_items(buf, parser)
@@ -429,8 +463,7 @@ local function main()
     else
       stat.enabled = stat.enabled + 1
       center_item(win, item)
-      rm.render({ buf = buf, win = win, event = "InvariantTest" })
-      vim.cmd("redraw")
+      render_and_wait(rm, buf, win, ("%s line %d"):format(component, item.start_row + 1))
 
       local marks = vim.api.nvim_buf_get_extmarks(buf, ui.ns, 0, -1, { details = true })
       local overlapping = {}
@@ -456,12 +489,9 @@ local function main()
       if visual and not stat.screen_diff then
         stat.visual_candidate = true
         local rendered = screen_signature(win, item)
-        rm.buf_disable()
+        disable_and_wait(rm, buf)
         local raw = screen_signature(win, item)
-        rm.buf_enable()
-        center_item(win, item)
-        rm.render({ buf = buf, win = win, event = "InvariantTest" })
-        vim.cmd("redraw")
+        enable_and_wait(rm, buf)
 
         if rendered ~= raw then
           stat.screen_diff = true
