@@ -60,10 +60,20 @@ for _, name in ipairs(link_names) do
   links[name] = { icon = "" }
 end
 
+local function in_markdown_window(context, callback)
+  vim.api.nvim_win_call(context.win, function()
+    assert(vim.api.nvim_get_current_buf() == context.buf, "render-markdown callback buffer mismatch")
+    callback()
+  end)
+end
+
 return {
   {
     "MeanderingProgrammer/render-markdown.nvim",
-    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    dependencies = {
+      "nvim-treesitter/nvim-treesitter",
+      "jbyuki/nabla.nvim",
+    },
     opts = {
       completions = { lsp = { enabled = true } },
       heading = { enabled = false },
@@ -80,8 +90,31 @@ return {
         },
       },
       latex = {
-        enabled = true,
-        converter = "latex2text",
+        enabled = false,
+      },
+      win_options = {
+        conceallevel = {
+          default = vim.o.conceallevel,
+          rendered = 2,
+        },
+      },
+      on = {
+        render = function(context)
+          in_markdown_window(context, function()
+            local nabla = require("nabla")
+            if not nabla.is_virt_enabled(context.buf) then
+              nabla.enable_virt({ autogen = true, silent = true })
+            end
+          end)
+        end,
+        clear = function(context)
+          in_markdown_window(context, function()
+            local nabla = require("nabla")
+            if nabla.is_virt_enabled(context.buf) then
+              nabla.disable_virt()
+            end
+          end)
+        end,
       },
       callout = callouts,
       checkbox = {
