@@ -67,7 +67,22 @@ return {
     opts = {
       completions = { lsp = { enabled = true } },
       heading = { enabled = false },
-      code = { enabled = false },
+      code = {
+        enabled = true,
+        sign = false,
+        language_icon = false,
+      },
+      html = {
+        tag = {
+          div = {},
+          details = {},
+          summary = {},
+        },
+      },
+      latex = {
+        enabled = true,
+        converter = "latex2text",
+      },
       callout = callouts,
       checkbox = {
         unchecked = { icon = "[ ]" },

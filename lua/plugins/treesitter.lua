@@ -44,6 +44,7 @@ return {
   config = function()
     local treesitter = require("nvim-treesitter")
     treesitter.setup({})
+    treesitter.install(parsers):wait(300000)
 
     vim.api.nvim_create_autocmd("FileType", {
       pattern = filetypes,

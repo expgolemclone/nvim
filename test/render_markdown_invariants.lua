@@ -17,8 +17,7 @@ local function load_plugin()
 end
 
 local function parser_available(language)
-  local ok, result = pcall(vim.treesitter.language.add, language)
-  return ok and result == true
+  return pcall(vim.treesitter.language.inspect, language)
 end
 
 local function read_source(buf)
@@ -185,6 +184,38 @@ local function collect_items(buf, parser)
     return a.capture < b.capture
   end)
   return items, languages_seen
+end
+
+local function code_highlight_stats(buf, parser, language)
+  local query = vim.treesitter.query.get(language, "highlights")
+  if not query then
+    fail(("no Tree-sitter highlight query is available for %s"):format(language))
+  end
+
+  local captures = {}
+  local foregrounds = {}
+  parser:for_each_tree(function(tree, language_tree)
+    if language_tree:lang() ~= language then
+      return
+    end
+
+    for id, node in query:iter_captures(tree:root(), buf, 0, -1) do
+      local text = vim.treesitter.get_node_text(node, buf) or ""
+      if text:find("%S") then
+        local capture = query.captures[id]
+        captures[capture] = true
+        local highlight = vim.api.nvim_get_hl(0, {
+          name = ("@%s.%s"):format(capture, language),
+          link = false,
+        })
+        if highlight.fg then
+          foregrounds[highlight.fg] = true
+        end
+      end
+    end
+  end)
+
+  return vim.tbl_count(captures), vim.tbl_count(foregrounds)
 end
 
 local function is_checkbox(text)
@@ -397,7 +428,10 @@ local function main()
     fail(("test.md filetype is %q, expected markdown"):format(vim.bo[buf].filetype))
   end
 
-  for _, language in ipairs({ "markdown", "markdown_inline", "html" }) do
+  local code_languages = { "javascript", "python", "bash" }
+  local required_languages = { "markdown", "markdown_inline", "html" }
+  vim.list_extend(required_languages, code_languages)
+  for _, language in ipairs(required_languages) do
     if not parser_available(language) then
       fail(("required Tree-sitter parser is unavailable: %s"):format(language))
     end
@@ -431,6 +465,23 @@ local function main()
   end
   if config.html.enabled and has_html_source(source) and not languages_seen.html then
     fail("test.md contains HTML, but no injected html syntax tree was produced")
+  end
+  local code_stats = {}
+  for _, language in ipairs(code_languages) do
+    if not languages_seen[language] then
+      fail(("test.md contains a %s code fence, but no injected syntax tree was produced"):format(language))
+    end
+    local capture_count, foreground_count = code_highlight_stats(buf, parser, language)
+    code_stats[language] = {
+      captures = capture_count,
+      foregrounds = foreground_count,
+    }
+    if capture_count < 3 then
+      fail(("%s code has only %d semantic highlight capture(s), expected at least 3"):format(language, capture_count))
+    end
+    if foreground_count < 3 then
+      fail(("%s code resolves to only %d foreground color(s), expected at least 3"):format(language, foreground_count))
+    end
   end
   if config.latex.enabled and math_source and not languages_seen.latex then
     fail("LaTeX syntax exists, but no injected latex syntax tree was produced")
@@ -468,10 +519,14 @@ local function main()
       local marks = vim.api.nvim_buf_get_extmarks(buf, ui.ns, 0, -1, { details = true })
       local overlapping = {}
       local visual = false
+      local rendered_math = false
       for _, mark in ipairs(marks) do
         if mark_overlaps(mark, item) then
           overlapping[#overlapping + 1] = mark
           visual = visual or mark_is_visual(mark)
+          rendered_math = rendered_math
+            or chunks_have_text(mark[4].virt_text)
+            or chunks_have_text(mark[4].virt_lines)
         end
       end
 
@@ -484,6 +539,15 @@ local function main()
         }
       else
         stat.marked = stat.marked + 1
+      end
+
+      if component == "latex" and not rendered_math then
+        failures[#failures + 1] = {
+          component = component,
+          line = item.start_row + 1,
+          reason = "no converted math text was rendered",
+          excerpt = excerpt(item),
+        }
       end
 
       if visual and not stat.screen_diff then
@@ -515,6 +579,10 @@ local function main()
   table.sort(components)
 
   print("render-markdown invariants")
+  for _, language in ipairs(code_languages) do
+    local stat = code_stats[language]
+    print(("  PASS  syntax_%-13s captures %d, foregrounds %d"):format(language, stat.captures, stat.foregrounds))
+  end
   for _, component in ipairs(components) do
     local stat = stats[component]
     local status = "PASS"
