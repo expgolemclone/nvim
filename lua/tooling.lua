@@ -16,11 +16,13 @@ return {
     { name = "ruff_format", package = "ruff", executable = "ruff" },
     { name = "stylua", package = "stylua", executable = "stylua" },
     { name = "shfmt", package = "shfmt", executable = "shfmt" },
+    { name = "prettier", package = "prettier", executable = "prettier" },
   },
   formatters_by_ft = {
     python = { "ruff_format" },
     lua = { "stylua" },
     sh = { "shfmt" },
     bash = { "shfmt" },
+    markdown = { "prettier" },
   },
 }
