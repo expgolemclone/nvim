@@ -21,6 +21,18 @@ vim.opt.splitright = true
 vim.opt.splitbelow = true
 vim.opt.background = "dark"
 
+if vim.fn.has("win32") == 1 then
+  vim.opt.shell = "pwsh"
+  vim.opt.shellcmdflag = "-NoLogo -NoProfile -NonInteractive -Command "
+    .. "[Console]::InputEncoding=[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();"
+    .. "$PSStyle.OutputRendering='PlainText';"
+  vim.opt.shellpipe = "> %s 2>&1"
+  vim.opt.shellredir = "> %s 2>&1"
+  vim.opt.shellquote = ""
+  vim.opt.shellxquote = ""
+  vim.opt.shelltemp = false
+end
+
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
