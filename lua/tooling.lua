@@ -1,6 +1,6 @@
 return {
   lsp_servers = {
-    { name = "pyright", package = "pyright" },
+    { name = "ty", package = "ty" },
     { name = "ruff", package = "ruff" },
     { name = "ts_ls", package = "typescript-language-server" },
     { name = "lua_ls", package = "lua-language-server" },
@@ -16,13 +16,20 @@ return {
     { name = "ruff_format", package = "ruff", executable = "ruff" },
     { name = "stylua", package = "stylua", executable = "stylua" },
     { name = "shfmt", package = "shfmt", executable = "shfmt" },
-    { name = "prettier", package = "prettier", executable = "prettier" },
+    { name = "oxfmt", package = "oxfmt", executable = "oxfmt" },
   },
   formatters_by_ft = {
     python = { "ruff_format" },
     lua = { "stylua" },
     sh = { "shfmt" },
     bash = { "shfmt" },
-    markdown = { "prettier" },
+    javascript = { "oxfmt" },
+    javascriptreact = { "oxfmt" },
+    typescript = { "oxfmt" },
+    typescriptreact = { "oxfmt" },
+    json = { "oxfmt" },
+    jsonc = { "oxfmt" },
+    yaml = { "oxfmt" },
+    markdown = { "oxfmt" },
   },
 }
