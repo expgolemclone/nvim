@@ -46,7 +46,9 @@ def main() -> None:
             print("FAIL  rendering - timed out")
             sys.exit(1)
 
-    output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+    output = "\n".join(
+        part.strip() for part in (result.stdout, result.stderr) if part.strip()
+    )
     if output:
         print(output)
 

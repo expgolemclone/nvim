@@ -57,7 +57,9 @@ def resolve_paths(nvim: str) -> tuple[Path, Path]:
     )
     if result.returncode != 0 or not result.stdout.strip():
         print("FAIL  unable to resolve Neovim data directory")
-        output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+        output = "\n".join(
+            part.strip() for part in (result.stdout, result.stderr) if part.strip()
+        )
         if output:
             for line in output.splitlines():
                 print(f"      {line}")
@@ -88,7 +90,9 @@ def load_tooling(nvim: str, config_dir: Path) -> dict[str, Any]:
     )
     if result.returncode != 0:
         print("FAIL  unable to load lua/tooling.lua")
-        output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+        output = "\n".join(
+            part.strip() for part in (result.stdout, result.stderr) if part.strip()
+        )
         if output:
             for line in output.splitlines():
                 print(f"      {line}")
@@ -108,7 +112,9 @@ def load_lazy_lock(config_dir: Path) -> dict[str, dict[str, str]]:
         return json.load(f)
 
 
-def check_plugins(data_dir: Path, plugins: dict[str, dict[str, str]]) -> tuple[int, int]:
+def check_plugins(
+    data_dir: Path, plugins: dict[str, dict[str, str]]
+) -> tuple[int, int]:
     """Check that each lazy.nvim plugin directory exists."""
     lazy_dir = data_dir / "lazy"
     ok_count = 0
@@ -122,7 +128,9 @@ def check_plugins(data_dir: Path, plugins: dict[str, dict[str, str]]) -> tuple[i
     return ok_count, len(plugins)
 
 
-def check_mason_lsp(data_dir: Path, lsp_servers: list[dict[str, str]]) -> tuple[int, int]:
+def check_mason_lsp(
+    data_dir: Path, lsp_servers: list[dict[str, str]]
+) -> tuple[int, int]:
     """Check that every configured Mason LSP package is installed."""
     packages_dir = data_dir / "mason" / "packages"
     ok_count = 0
@@ -149,7 +157,9 @@ def find_executable(name: str, search_paths: list[Path]) -> str | None:
     return shutil.which(name)
 
 
-def check_formatters(data_dir: Path, formatters: list[dict[str, str]]) -> tuple[int, int]:
+def check_formatters(
+    data_dir: Path, formatters: list[dict[str, str]]
+) -> tuple[int, int]:
     """Check that every configured formatter executable is available."""
     mason_bin = data_dir / "mason" / "bin"
     search_paths = [mason_bin]
@@ -197,7 +207,9 @@ def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
         return 1, 1
 
     print(f"  FAIL  startup - nvim exited with code {result.returncode}")
-    output = "\n".join(part.strip() for part in (result.stdout, result.stderr) if part.strip())
+    output = "\n".join(
+        part.strip() for part in (result.stdout, result.stderr) if part.strip()
+    )
     if output:
         for line in output.splitlines():
             print(f"        {line}")
