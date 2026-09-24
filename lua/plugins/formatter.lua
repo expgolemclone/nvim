@@ -23,8 +23,10 @@ return {
   {
     "stevearc/conform.nvim",
     opts = {
+      default_format_opts = {
+        timeout_ms = 10000,
+      },
       format_on_save = {
-        timeout_ms = 2000,
         lsp_format = "never",
       },
       formatters_by_ft = tooling.formatters_by_ft,
