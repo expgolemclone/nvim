@@ -177,10 +177,11 @@ def check_formatters(
 
 
 def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
-    """Start Neovim headlessly and force-load the command-lazy Markdown plugin."""
+    """Check startup, Markdown preview config, and statusline line-ending labels."""
     smoke_lua = (
         "require('lazy').load({ plugins = { 'markdown-preview.nvim' } }); "
-        "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied')"
+        "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied'); "
+        "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'statusline_fileformat.lua'))"
     )
     env = os.environ.copy()
     env["NVIM_CONFIG_CHECKOUT"] = config_dir.as_posix()
@@ -191,7 +192,10 @@ def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
         "-u",
         str(config_dir / "init.lua"),
         "-c",
-        f"lua {smoke_lua}",
+        (
+            f"lua local ok, err = pcall(function() {smoke_lua} end); "
+            "if not ok then print(err); vim.cmd('cquit 1') end"
+        ),
         "-c",
         "qa!",
     ]

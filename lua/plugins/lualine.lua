@@ -7,5 +7,17 @@ return {
       component_separators = "|",
       section_separators = "",
     },
+    sections = {
+      lualine_x = {
+        "encoding",
+        {
+          "fileformat",
+          fmt = function(format)
+            return ({ unix = "LF", dos = "CRLF", mac = "CR" })[format]
+          end,
+        },
+        "filetype",
+      },
+    },
   },
 }
