@@ -13,7 +13,7 @@ return {
         {
           "fileformat",
           fmt = function(format)
-            return ({ unix = "LF", dos = "CRLF", mac = "CR" })[format]
+            return require("line_endings").labels[format]
           end,
         },
         "filetype",

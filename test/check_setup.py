@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -112,19 +113,45 @@ def load_lazy_lock(config_dir: Path) -> dict[str, dict[str, str]]:
         return json.load(f)
 
 
+def plugin_commit(plugin_path: Path) -> str:
+    """Resolve a plugin's full commit from loose or packed repository refs."""
+    metadata = plugin_path / ".git"
+    head = (metadata / "HEAD").read_text(encoding="utf-8").strip()
+    if not head.startswith("ref: "):
+        return head
+    ref = head.removeprefix("ref: ")
+    loose_ref = metadata / ref
+    if loose_ref.is_file():
+        return loose_ref.read_text(encoding="utf-8").strip()
+    for line in (metadata / "packed-refs").read_text(encoding="utf-8").splitlines():
+        commit, _, name = line.partition(" ")
+        if name == ref:
+            return commit
+    raise ValueError(f"unresolved repository ref: {ref}")
+
+
 def check_plugins(
     data_dir: Path, plugins: dict[str, dict[str, str]]
 ) -> tuple[int, int]:
-    """Check that each lazy.nvim plugin directory exists."""
+    """Check that installed plugins exactly match their locked commits."""
     lazy_dir = data_dir / "lazy"
     ok_count = 0
     for name in sorted(plugins):
         plugin_path = lazy_dir / name
-        if plugin_path.is_dir():
-            print(f"  OK    {name}")
-            ok_count += 1
-        else:
+        if not plugin_path.is_dir():
             print(f"  FAIL  {name} - directory not found at {plugin_path}")
+            continue
+        try:
+            commit = plugin_commit(plugin_path)
+        except (OSError, ValueError) as exc:
+            print(f"  FAIL  {name} - cannot resolve installed commit: {exc}")
+            continue
+        expected = plugins[name]["commit"]
+        if commit != expected:
+            print(f"  FAIL  {name} - installed {commit}, locked {expected}")
+            continue
+        print(f"  OK    {name}")
+        ok_count += 1
     return ok_count, len(plugins)
 
 
@@ -177,11 +204,12 @@ def check_formatters(
 
 
 def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
-    """Check startup, Markdown preview config, and statusline line-ending labels."""
+    """Check startup, Markdown preview, and displayed line-ending labels."""
     smoke_lua = (
         "require('lazy').load({ plugins = { 'markdown-preview.nvim' } }); "
         "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied'); "
-        "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'statusline_fileformat.lua'))"
+        "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'statusline_fileformat.lua')); "
+        "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'message_fileformat.lua'))"
     )
     env = os.environ.copy()
     env["NVIM_CONFIG_CHECKOUT"] = config_dir.as_posix()
@@ -193,18 +221,21 @@ def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
         str(config_dir / "init.lua"),
         "-c",
         (
-            f"lua local ok, err = pcall(function() {smoke_lua} end); "
-            "if not ok then print(err); vim.cmd('cquit 1') end"
+            f"lua vim.schedule(function() local ok, err = xpcall(function() {smoke_lua} end, debug.traceback); "
+            "if not ok then io.stderr:write(err .. '\\n'); vim.cmd('cquit 1') "
+            "else vim.cmd('qa!') end end)"
         ),
-        "-c",
-        "qa!",
     ]
 
-    try:
-        result = run_nvim(nvim, command, cwd=config_dir, env=env, timeout=330)
-    except subprocess.TimeoutExpired:
-        print("  FAIL  startup - timed out")
-        return 0, 1
+    temp_root = Path("C:/dev/tmp")
+    temp_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="nvim-file-messages-", dir=temp_root) as temp_dir:
+        env["NVIM_TEST_TMP"] = Path(temp_dir).as_posix()
+        try:
+            result = run_nvim(nvim, command, cwd=config_dir, env=env, timeout=330)
+        except subprocess.TimeoutExpired:
+            print("  FAIL  startup - timed out")
+            return 0, 1
 
     if result.returncode == 0:
         print("  OK    startup")

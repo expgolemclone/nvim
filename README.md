@@ -1,5 +1,9 @@
 # Neovim configuration
 
+The statusline and Noice file messages label line endings as `LF`, `CRLF`, and
+`CR`. This only changes display, not file contents. Message history uses the same
+labels.
+
 The checkout is the canonical configuration. On Windows, expose it at
 `%LOCALAPPDATA%\nvim` with the idempotent setup script:
 
