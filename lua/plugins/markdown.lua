@@ -97,22 +97,20 @@ return {
           default = vim.o.conceallevel,
           rendered = 2,
         },
+        concealcursor = {
+          default = vim.o.concealcursor,
+          rendered = "nc",
+        },
       },
       on = {
         render = function(context)
           in_markdown_window(context, function()
-            local nabla = require("nabla")
-            if not nabla.is_virt_enabled(context.buf) then
-              nabla.enable_virt({ autogen = true, silent = true })
-            end
+            require("markdown_math").render(context.buf)
           end)
         end,
         clear = function(context)
           in_markdown_window(context, function()
-            local nabla = require("nabla")
-            if nabla.is_virt_enabled(context.buf) then
-              nabla.disable_virt()
-            end
+            require("markdown_math").clear(context.buf)
           end)
         end,
       },

@@ -35,8 +35,7 @@ local function has_math_source(source)
 end
 
 local function has_html_source(source)
-  return source:find("<[%a][%w:_%-]*%s[^>]*>") ~= nil
-    or source:find("<[%a][%w:_%-]*>") ~= nil
+  return source:find("<[%a][%w:_%-]*%s[^>]*>") ~= nil or source:find("<[%a][%w:_%-]*>") ~= nil
 end
 
 local capture_sources = {
@@ -219,8 +218,7 @@ local function code_highlight_stats(buf, parser, language)
 end
 
 local function is_checkbox(text)
-  return text:match("^%s*[-+*]%s+%[[ xX%-]%]") ~= nil
-    or text:match("^%s*%d+[%.%)]%s+%[[ xX%-]%]") ~= nil
+  return text:match("^%s*[-+*]%s+%[[ xX%-]%]") ~= nil or text:match("^%s*%d+[%.%)]%s+%[[ xX%-]%]") ~= nil
 end
 
 local function html_tag(text)
@@ -306,8 +304,7 @@ local function mark_overlaps(mark, item)
   if end_row == nil or end_col == nil then
     return point_in_item(row, col, item)
   end
-  return pos_less(row, col, item.end_row, item.end_col)
-    and pos_less(item.start_row, item.start_col, end_row, end_col)
+  return pos_less(row, col, item.end_row, item.end_col) and pos_less(item.start_row, item.start_col, end_row, end_col)
 end
 
 local function chunks_have_text(lines)
@@ -373,6 +370,7 @@ local function math_layout_stats(marks)
     if type(details.conceal) == "string" then
       text[#text + 1] = details.conceal
     end
+    collect_chunk_text(details.virt_text, text)
     if type(details.virt_lines) == "table" then
       virtual_lines = virtual_lines + #details.virt_lines
       if details.virt_lines_above then
@@ -463,6 +461,7 @@ local function main()
   vim.o.columns = 120
   vim.o.lines = 45
   vim.o.wrap = false
+  vim.o.swapfile = false
 
   local rm = load_plugin()
   local state = require("render-markdown.state")
@@ -471,13 +470,13 @@ local function main()
   state.cache = {}
 
   local root = vim.env.NVIM_CONFIG_CHECKOUT or vim.fn.getcwd()
-  local fixture = vim.fs.joinpath(root, "test.md")
+  local fixture = vim.fs.joinpath(root, "sample.md")
   vim.cmd.edit(vim.fn.fnameescape(fixture))
   local buf = vim.api.nvim_get_current_buf()
   local win = vim.api.nvim_get_current_win()
 
   if vim.bo[buf].filetype ~= "markdown" then
-    fail(("test.md filetype is %q, expected markdown"):format(vim.bo[buf].filetype))
+    fail(("sample.md filetype is %q, expected markdown"):format(vim.bo[buf].filetype))
   end
 
   local code_languages = { "javascript", "python", "bash" }
@@ -500,53 +499,41 @@ local function main()
       fail("LaTeX syntax exists, but the latex Tree-sitter parser is unavailable")
     end
     if config.latex.enabled then
-      fail("render-markdown LaTeX conversion must stay disabled when Nabla owns math rendering")
+      fail("render-markdown LaTeX conversion must stay disabled when markdown_math owns math rendering")
     end
   end
 
   render_and_wait(rm, buf, win, "initial render")
 
-  local ok_nabla, nabla = pcall(require, "nabla")
-  if not ok_nabla then
-    fail("nabla.nvim is not available")
-  end
-  local math_enabled = math_source and nabla.is_virt_enabled(buf)
-  if math_source and not math_enabled then
-    fail("LaTeX syntax exists, but Nabla virtual rendering is not enabled")
-  end
-  local nabla_ns = vim.api.nvim_get_namespaces()["nabla.nvim"]
-  if math_source and not nabla_ns then
-    fail("LaTeX syntax exists, but the Nabla extmark namespace does not exist")
-  end
-  local nabla_marks = nabla_ns
-      and vim.api.nvim_buf_get_extmarks(buf, nabla_ns, 0, -1, { details = true })
-    or {}
-  local math_layout = math_layout_stats(nabla_marks)
+  local math_ns = require("markdown_math").ns
+  local math_marks = vim.api.nvim_buf_get_extmarks(buf, math_ns, 0, -1, { details = true })
+  local math_enabled = math_source and #math_marks > 0
+  local math_layout = math_layout_stats(math_marks)
   if math_source and math_layout.virtual_lines == 0 then
-    fail("Nabla produced no virtual lines for structured formulas")
+    fail("Math renderer produced no virtual lines for structured formulas")
   end
   if math_source and (math_layout.lines_above == 0 or math_layout.lines_below == 0) then
-    fail("Nabla did not place limits, exponents, or fractions above and below the formula baseline")
+    fail("Math renderer did not place limits, exponents, or fractions above and below the formula baseline")
   end
   if math_source and not math_layout.text:find("―", 1, true) then
-    fail("Nabla did not render a horizontal fraction bar")
+    fail("Math renderer did not render a horizontal fraction bar")
   end
 
   local parser = vim.treesitter.get_parser(buf, "markdown")
   local items, languages_seen = collect_items(buf, parser)
   if #items == 0 then
-    fail("no renderable Markdown syntax was discovered in test.md")
+    fail("no renderable Markdown syntax was discovered in sample.md")
   end
   if not languages_seen.markdown_inline then
-    fail("test.md contains inline Markdown, but no markdown_inline syntax tree was produced")
+    fail("sample.md contains inline Markdown, but no markdown_inline syntax tree was produced")
   end
   if config.html.enabled and has_html_source(source) and not languages_seen.html then
-    fail("test.md contains HTML, but no injected html syntax tree was produced")
+    fail("sample.md contains HTML, but no injected html syntax tree was produced")
   end
   local code_stats = {}
   for _, language in ipairs(code_languages) do
     if not languages_seen[language] then
-      fail(("test.md contains a %s code fence, but no injected syntax tree was produced"):format(language))
+      fail(("sample.md contains a %s code fence, but no injected syntax tree was produced"):format(language))
     end
     local capture_count, foreground_count = code_highlight_stats(buf, parser, language)
     code_stats[language] = {
@@ -595,9 +582,8 @@ local function main()
         render_and_wait(rm, buf, win, ("%s line %d"):format(component, item.start_row + 1))
       end
 
-      local namespace = component == "latex" and nabla_ns or ui.ns
-      local marks = component == "latex"
-          and nabla_marks
+      local namespace = component == "latex" and math_ns or ui.ns
+      local marks = component == "latex" and math_marks
         or vim.api.nvim_buf_get_extmarks(buf, namespace, 0, -1, { details = true })
       local overlapping = {}
       local visual = false
@@ -664,11 +650,13 @@ local function main()
     print(("  PASS  syntax_%-13s captures %d, foregrounds %d"):format(language, stat.captures, stat.foregrounds))
   end
   if math_source then
-    print(("  PASS  math_layout          virtual lines %d, above %d, below %d"):format(
-      math_layout.virtual_lines,
-      math_layout.lines_above,
-      math_layout.lines_below
-    ))
+    print(
+      ("  PASS  math_layout          virtual lines %d, above %d, below %d"):format(
+        math_layout.virtual_lines,
+        math_layout.lines_above,
+        math_layout.lines_below
+      )
+    )
   end
   for _, component in ipairs(components) do
     local stat = stats[component]
@@ -680,13 +668,7 @@ local function main()
     elseif stat.visual_candidate and not stat.screen_diff then
       status = "FAIL"
     end
-    print(("  %-4s  %-20s marked %d/%d, skipped %d"):format(
-      status,
-      component,
-      stat.marked,
-      stat.enabled,
-      stat.skipped
-    ))
+    print(("  %-4s  %-20s marked %d/%d, skipped %d"):format(status, component, stat.marked, stat.enabled, stat.skipped))
   end
 
   if #failures > 0 then
@@ -704,6 +686,7 @@ local function main()
   end
 
   print("")
+  dofile(vim.fs.joinpath(root, "test", "math_alignment.lua"))(rm, render_and_wait)
   print(("All %d discovered renderable syntax node(s) satisfy the rendering invariants."):format(#items))
   vim.cmd("qa!")
 end

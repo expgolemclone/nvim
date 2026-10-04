@@ -252,6 +252,7 @@ def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8")
     nvim = find_nvim()
     config_dir, data_dir = resolve_paths(nvim)
     tooling = load_tooling(nvim, config_dir)

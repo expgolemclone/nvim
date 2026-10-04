@@ -1,4 +1,4 @@
-"""Verify that render-markdown.nvim actually renders the syntax in test.md."""
+"""Verify Markdown syntax and math display-cell alignment."""
 
 import os
 import shutil
@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding="utf-8")
     nvim = shutil.which("nvim")
     if not nvim:
         print("FAIL  rendering - nvim executable not found in PATH")
@@ -28,7 +29,7 @@ def main() -> None:
         "lua dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'render_markdown_invariants.lua'))",
     ]
 
-    with tempfile.TemporaryDirectory(prefix="nvim-rendering-") as cache_dir:
+    with tempfile.TemporaryDirectory(prefix="nvim-rendering-", dir="C:/dev/tmp") as cache_dir:
         env["XDG_CACHE_HOME"] = cache_dir
         try:
             result = subprocess.run(
