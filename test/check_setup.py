@@ -206,6 +206,13 @@ def check_formatters(
 def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
     """Check startup, Markdown preview, and displayed line-ending labels."""
     smoke_lua = (
+        "local config = require('lazy.core.config'); "
+        "assert(vim.fs.normalize(config.options.lockfile) == "
+        "vim.fs.normalize(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'lazy-lock.json')), "
+        "'lazy.nvim must use the checkout lockfile'); "
+        "local lock = vim.json.decode(vim.env.NVIM_LOCK_JSON); "
+        "for name in pairs(config.plugins) do "
+        "assert(lock[name], 'Configured plugin missing from lazy-lock.json: ' .. name) end; "
         "require('lazy').load({ plugins = { 'markdown-preview.nvim' } }); "
         "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied'); "
         "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'statusline_fileformat.lua')); "
@@ -213,6 +220,8 @@ def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
     )
     env = os.environ.copy()
     env["NVIM_CONFIG_CHECKOUT"] = config_dir.as_posix()
+    # Capture the lock before lazy.nvim can rewrite it during startup.
+    env["NVIM_LOCK_JSON"] = json.dumps(load_lazy_lock(config_dir))
     command = [
         "--headless",
         "--cmd",

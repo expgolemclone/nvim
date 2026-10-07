@@ -31,7 +31,7 @@ return {
         filter = { event = "msg_show", kind = "progress", find = '^".*"%s*$' },
         opts = { skip = true },
       },
-      { filter = { event = "msg_show", kind = "progress" }, view = "mini" },
+      { filter = { event = "msg_show", kind = { "progress", "bufwrite" } }, view = "mini" },
     },
   },
   config = function(_, opts)
@@ -40,7 +40,7 @@ return {
     -- Add a formatter rather than replacing any Noice implementation.
     formatters.file_message = function(message, options, input)
       local file_info = input.event == "msg_history_show"
-        or (input.event == "msg_show" and (input.kind == "" or input.kind == "progress"))
+        or (input.event == "msg_show" and (input.kind == "" or input.kind == "progress" or input.kind == "bufwrite"))
       if not file_info then
         return formatters.message(message, options, input)
       end

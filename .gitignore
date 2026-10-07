@@ -11,9 +11,9 @@ __pycache__/
 !README.md
 !init.lua
 !lazy-lock.json
-!test.md
 !lua/*.lua
 !lua/plugins/*.lua
 !test/*.py
 !test/*.lua
+!test/sample.md
 !tools/*.ps1

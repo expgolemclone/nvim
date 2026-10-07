@@ -27,7 +27,9 @@ local function check_strings(value, context)
   end
 end
 
-vim.cmd.edit("test.md")
+local fixture = vim.fs.joinpath(vim.fn.getcwd(), "test", "sample.md")
+assert(vim.fn.filereadable(fixture) == 1, "Rendering fixture is missing: " .. fixture)
+vim.cmd.edit(vim.fn.fnameescape(fixture))
 vim.wait(2000, function()
   return next(vim.api.nvim_buf_get_extmarks(0, -1, 0, -1, { details = true })) ~= nil
 end)

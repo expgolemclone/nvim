@@ -54,6 +54,7 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
+  lockfile = vim.fs.joinpath(vim.fs.dirname(debug.getinfo(1, "S").source:sub(2)), "lazy-lock.json"),
   spec = { { import = "plugins" } },
   ui = {
     icons = {

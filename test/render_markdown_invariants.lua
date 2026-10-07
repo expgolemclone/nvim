@@ -48,7 +48,8 @@ local capture_sources = {
       (plus_metadata)
     ] @dash
 
-    (link_reference_definition (link_label) @footnote)
+    ((link_reference_definition (link_label) @footnote)
+      (#lua-match? @footnote "^%[%^.+%]$"))
 
     [
       (atx_heading)
@@ -470,7 +471,8 @@ local function main()
   state.cache = {}
 
   local root = vim.env.NVIM_CONFIG_CHECKOUT or vim.fn.getcwd()
-  local fixture = vim.fs.joinpath(root, "sample.md")
+  local fixture = vim.fs.joinpath(root, "test", "sample.md")
+  assert(vim.fn.filereadable(fixture) == 1, "Rendering fixture is missing: " .. fixture)
   vim.cmd.edit(vim.fn.fnameescape(fixture))
   local buf = vim.api.nvim_get_current_buf()
   local win = vim.api.nvim_get_current_win()

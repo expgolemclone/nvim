@@ -13,7 +13,7 @@ for format, label in pairs({ unix = "LF", dos = "CRLF", mac = "CR" }) do
     local source = filename .. "[New][" .. format .. "][noeol] " .. counts
     local expected = filename .. "[New][" .. label .. "][noeol] " .. counts
     assert(endings.file_message(source) == expected, source)
-    for _, kind in ipairs({ "", "progress" }) do
+    for _, kind in ipairs({ "", "progress", "bufwrite" }) do
       local message = Message("msg_show", kind, { { 0, source } })
       for name in pairs(require("noice.config.format").builtin) do
         if vim.inspect(Config.options.format[name]):find("{file_message}", 1, true) then
@@ -75,7 +75,7 @@ local function assert_display(message)
   local source = message:content()
   local expected = endings.file_message(source)
   local rendered = Format.format(message, "notify"):content()
-  assert(rendered == expected, "Wrong message: " .. rendered)
+  assert(rendered == expected, "Wrong message (" .. message.event .. "/" .. message.kind .. "): " .. rendered)
   local flags = rendered:match('^".*"%s+(.*)$')
   for _, name in ipairs({ "unix", "dos", "mac" }) do
     assert(not flags:find("[" .. name .. "]", 1, true), rendered)

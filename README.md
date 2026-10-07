@@ -6,7 +6,9 @@ labels.
 
 Markdown math uses Nabla drawings with display-cell positioning, so Japanese
 text and earlier formulas do not shift exponents or fractions. Rendering checks
-use `sample.md` and screen-cell alignment regressions.
+use the tracked `test/sample.md` fixture and screen-cell alignment regressions.
+The setup check also rejects configured plugins missing from `lazy-lock.json`.
+Each checkout uses its own lockfile, including when loaded with `nvim -u`.
 
 The checkout is the canonical configuration. On Windows, expose it at
 `%LOCALAPPDATA%\nvim` with the idempotent setup script:
