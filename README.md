@@ -1,11 +1,5 @@
 # Neovim configuration
 
-The statusline labels line endings as `LF`, `CRLF`, and `CR`. This only changes
-display, not file contents.
-
-The setup check rejects configured plugins missing from `lazy-lock.json`.
-Each checkout uses its own modules and lockfile, including when loaded with `nvim -u`.
-
 The checkout is the canonical configuration. On Windows, expose it at
 `%LOCALAPPDATA%\nvim` with the idempotent setup script:
 
