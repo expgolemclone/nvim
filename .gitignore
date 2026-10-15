@@ -1,0 +1,19 @@
+__pycache__/
+# Ignore everything
+*
+
+# Allow directories (needed for git traversal)
+!*/
+
+# Whitelist tracked files
+!.gitignore
+!ARCHITECTURE.md
+!README.md
+!init.lua
+!lazy-lock.json
+!lua/*.lua
+!lua/plugins/*.lua
+!test/*.py
+!test/*.lua
+!test/sample.md
+!tools/*.ps1
