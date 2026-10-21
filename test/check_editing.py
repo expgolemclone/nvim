@@ -17,6 +17,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="nvim-editing-", dir="C:/dev/tmp") as tmp:
         env["NVIM_TEST_TMP"] = Path(tmp).as_posix()
         for test in (
+            "visual-copy.lua",
             "editing_lifecycle.lua",
             "markdown_enter.lua",
             "no_private_use_glyphs.lua",
