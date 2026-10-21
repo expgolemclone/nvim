@@ -31,16 +31,15 @@ checked(function()
   local lines = { "first line", "second line", "", "日本語 text" }
   local cases = {
     { keys = "Vjy", expected = { "first line", "second line" }, regtype = "V" },
-    { keys = "Vj<C-c>", expected = { "first line", "second line" }, regtype = "V" },
-    { keys = "jVk<C-c>", expected = { "first line", "second line" }, regtype = "V" },
-    { keys = "vjl<C-c>", expected = { "first line", "se" }, regtype = "v" },
-    { keys = "<C-v>j3l<C-c>", expected = { "firs", "seco" }, regtype = "\0224" },
-    { keys = "VG<C-c>", expected = lines, regtype = "V" },
+    { keys = "jVky", expected = { "first line", "second line" }, regtype = "V" },
+    { keys = "vjly", expected = { "first line", "se" }, regtype = "v" },
+    { keys = "<C-v>j3ly", expected = { "firs", "seco" }, regtype = "\0224" },
+    { keys = "VGy", expected = lines, regtype = "V" },
   }
   local filetypes = { "text", "markdown" }
   local function run_case(index)
     if index > #cases * #filetypes then
-      for _, mode in ipairs({ "n", "i" }) do
+      for _, mode in ipairs({ "n", "i", "x", "s" }) do
         assert(vim.fn.maparg("<C-c>", mode) == "", "Ctrl+C must retain native behavior in " .. mode .. " mode")
       end
       print("Visual copying: " .. (#cases * #filetypes) .. " cases passed")

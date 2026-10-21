@@ -84,8 +84,6 @@ require("lazy").setup({
   },
 })
 
-vim.keymap.set("x", "<C-c>", '"+y', { desc = "Copy selection to clipboard" })
-
 -- バッファ
 vim.keymap.set("n", "<leader>bd", "<cmd>bdelete<CR>", { desc = "バッファを閉じる" })
 
