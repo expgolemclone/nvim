@@ -29,8 +29,8 @@ vim.opt.background = "dark"
 vim.opt.statusline = "%f %m%r%=%{&fileencoding} | %{v:lua.require'line_endings'.label()} | %y %l:%c %p%%"
 
 if vim.fn.has("win32") == 1 then
-  vim.opt.shell = "pwsh"
-  vim.opt.shellcmdflag = "-NoLogo -NoProfile -NonInteractive -Command "
+  vim.opt.shell = "mise.exe"
+  vim.opt.shellcmdflag = "exec -- pwsh -NoLogo -NoProfile -NonInteractive -Command "
     .. "[Console]::InputEncoding=[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new();"
     .. "$PSStyle.OutputRendering='PlainText';"
   vim.opt.shellpipe = "> %s 2>&1"

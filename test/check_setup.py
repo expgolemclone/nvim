@@ -214,7 +214,8 @@ def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
         "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'plugin_lifecycle.lua')); "
         "require('lazy').load({ plugins = { 'markdown-preview.nvim' } }); "
         "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied'); "
-        "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'statusline_fileformat.lua'))"
+        "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'statusline_fileformat.lua')); "
+        "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'managed-shell.lua'))"
     )
     env = os.environ.copy()
     env["NVIM_CONFIG_CHECKOUT"] = config_dir.as_posix()
