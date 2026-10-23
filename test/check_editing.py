@@ -19,16 +19,14 @@ def main() -> None:
         for test in (
             "visual-copy.lua",
             "editing_lifecycle.lua",
-            "markdown_enter.lua",
-            "no_private_use_glyphs.lua",
+            "native-enter.lua",
+            "markdown-source.lua",
+            "markdown-preview.lua",
         ):
             result = run_nvim(
                 nvim,
                 [
                     "--headless",
-                    "-i",
-                    "NONE",
-                    "-n",
                     "-u",
                     str(root / "init.lua"),
                     "-c",
@@ -39,9 +37,7 @@ def main() -> None:
                 timeout=90,
             )
             output = "\n".join(
-                part.strip()
-                for part in (result.stdout, result.stderr)
-                if part.strip()
+                part.strip() for part in (result.stdout, result.stderr) if part.strip()
             )
             if output:
                 print(output)

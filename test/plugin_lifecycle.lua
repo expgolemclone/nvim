@@ -1,4 +1,21 @@
 local config = require("lazy.core.config")
+assert(
+  vim.fs.normalize(config.options.lockfile)
+    == vim.fs.normalize(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, "lazy-lock.json")),
+  "lazy.nvim must use the checkout lockfile"
+)
+local lock = vim.json.decode(assert(vim.env.NVIM_LOCK_JSON))
+local git = require("lazy.manage.git")
+for name, plugin in pairs(config.plugins) do
+  local expected = assert(lock[name], "Configured plugin missing from lazy-lock.json: " .. name)
+  local installed = git.info(plugin.dir)
+  assert(installed and installed.commit == expected.commit, "Installed plugin differs from lazy-lock.json: " .. name)
+end
+for name in pairs(lock) do
+  assert(config.plugins[name], "Unused plugin in lazy-lock.json: " .. name)
+end
+assert(config.plugins["nvim-treesitter"].commit == nil, "Tree-sitter must be versioned only by the lockfile")
+print(("Plugin lock check passed: %d plugins"):format(vim.tbl_count(lock)))
 local endings_source = debug.getinfo(require("line_endings").label, "S").source:sub(2)
 assert(
   vim.fs.normalize(endings_source)
@@ -27,14 +44,14 @@ assert(vim.fn.maparg(" e", "n") == "", "Removed tree map still exists")
 assert(vim.fn.maparg(" gg", "n") == "", "Removed Git map still exists")
 assert(vim.fn.maparg("gc", "n") ~= "", "Native commenting must be available")
 assert(vim.fn.exists(":LspInstall") == 0 and vim.fn.exists(":LspUninstall") == 0, "Removed bridge commands remain")
-for _, name in ipairs({ "telescope.nvim", "render-markdown.nvim", "markdown-preview.nvim", "mason-tool-installer.nvim" }) do
+for _, name in ipairs({ "telescope.nvim", "live-preview.nvim", "mason-tool-installer.nvim" }) do
   assert(not config.plugins[name]._.loaded, "Unused plugin loaded at empty startup: " .. name)
 end
 for _, name in ipairs({ "conform.nvim", "nvim-lspconfig" }) do
   assert(config.plugins[name]._.loaded, "Required startup plugin was delayed: " .. name)
 end
 assert(vim.fn.maparg(" mp", "n") ~= "", "Markdown preview key is missing")
-assert(vim.fn.exists(":MarkdownPreview") == 2, "Markdown preview command is missing")
+assert(vim.fn.exists(":LivePreview") == 2, "Markdown preview command is missing")
 local blink = require("blink.cmp.config")
 assert(vim.deep_equal(blink.sources.default, { "lsp", "buffer" }), "Completion sources must omit snippets")
 assert(blink.snippets.preset == "default", "LSP snippets must retain native expansion")

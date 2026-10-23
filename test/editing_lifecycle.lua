@@ -7,7 +7,15 @@ local function main()
   vim.cmd.enew()
   local diagnostic_buf = vim.api.nvim_get_current_buf()
   vim.api.nvim_buf_set_lines(diagnostic_buf, 0, -1, false, {
-    "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
   })
   local ns = vim.api.nvim_create_namespace("editing-diagnostics")
   vim.diagnostic.set(ns, diagnostic_buf, {
@@ -144,12 +152,6 @@ local function main()
   )
   vim.cmd.write()
   assert(vim.api.nvim_buf_get_lines(0, 0, 1, false)[1] == "# Heading", "Markdown save was not formatted")
-  local markdown = require("render-markdown")
-  local was_enabled = markdown.get()
-  vim.api.nvim_feedkeys(" mr", "xt", false)
-  assert(markdown.get() ~= was_enabled, "Markdown key did not toggle rendering")
-  vim.api.nvim_feedkeys(" mr", "xt", false)
-  assert(markdown.get() == was_enabled, "Markdown key did not restore rendering")
   print("Editing lifecycle check passed")
 end
 

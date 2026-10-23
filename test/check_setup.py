@@ -29,7 +29,7 @@ def run_nvim(
 ) -> subprocess.CompletedProcess[str]:
     """Run Neovim with UTF-8 output handling."""
     return subprocess.run(
-        [nvim, *args],
+        [nvim, "-i", "NONE", "-n", *args],
         cwd=cwd,
         env=env,
         capture_output=True,
@@ -113,48 +113,6 @@ def load_lazy_lock(config_dir: Path) -> dict[str, dict[str, str]]:
         return json.load(f)
 
 
-def plugin_commit(plugin_path: Path) -> str:
-    """Resolve a plugin's full commit from loose or packed repository refs."""
-    metadata = plugin_path / ".git"
-    head = (metadata / "HEAD").read_text(encoding="utf-8").strip()
-    if not head.startswith("ref: "):
-        return head
-    ref = head.removeprefix("ref: ")
-    loose_ref = metadata / ref
-    if loose_ref.is_file():
-        return loose_ref.read_text(encoding="utf-8").strip()
-    for line in (metadata / "packed-refs").read_text(encoding="utf-8").splitlines():
-        commit, _, name = line.partition(" ")
-        if name == ref:
-            return commit
-    raise ValueError(f"unresolved repository ref: {ref}")
-
-
-def check_plugins(
-    data_dir: Path, plugins: dict[str, dict[str, str]]
-) -> tuple[int, int]:
-    """Check that installed plugins exactly match their locked commits."""
-    lazy_dir = data_dir / "lazy"
-    ok_count = 0
-    for name in sorted(plugins):
-        plugin_path = lazy_dir / name
-        if not plugin_path.is_dir():
-            print(f"  FAIL  {name} - directory not found at {plugin_path}")
-            continue
-        try:
-            commit = plugin_commit(plugin_path)
-        except (OSError, ValueError) as exc:
-            print(f"  FAIL  {name} - cannot resolve installed commit: {exc}")
-            continue
-        expected = plugins[name]["commit"]
-        if commit != expected:
-            print(f"  FAIL  {name} - installed {commit}, locked {expected}")
-            continue
-        print(f"  OK    {name}")
-        ok_count += 1
-    return ok_count, len(plugins)
-
-
 def check_mason_lsp(
     data_dir: Path, lsp_servers: list[dict[str, str]]
 ) -> tuple[int, int]:
@@ -200,20 +158,9 @@ def check_formatters(
 
 
 def check_nvim_startup(nvim: str, config_dir: Path) -> tuple[int, int]:
-    """Check startup, Markdown preview, and displayed line-ending labels."""
+    """Check startup, installed plugin revisions, shell, and line-ending labels."""
     smoke_lua = (
-        "local config = require('lazy.core.config'); "
-        "assert(vim.fs.normalize(config.options.lockfile) == "
-        "vim.fs.normalize(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'lazy-lock.json')), "
-        "'lazy.nvim must use the checkout lockfile'); "
-        "local lock = vim.json.decode(vim.env.NVIM_LOCK_JSON); "
-        "for name in pairs(config.plugins) do "
-        "assert(lock[name], 'Configured plugin missing from lazy-lock.json: ' .. name) end; "
-        "for name in pairs(lock) do "
-        "assert(config.plugins[name], 'Unused plugin in lazy-lock.json: ' .. name) end; "
         "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'plugin_lifecycle.lua')); "
-        "require('lazy').load({ plugins = { 'markdown-preview.nvim' } }); "
-        "assert(vim.g.mkdp_auto_close == 1, 'markdown preview config was not applied'); "
         "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'statusline_fileformat.lua')); "
         "dofile(vim.fs.joinpath(vim.env.NVIM_CONFIG_CHECKOUT, 'test', 'managed-shell.lua'))"
     )
@@ -267,13 +214,6 @@ def main() -> None:
     total_ok = 0
     total_all = 0
 
-    print("=== lazy.nvim Plugins ===")
-    plugins = load_lazy_lock(config_dir)
-    ok, total = check_plugins(data_dir, plugins)
-    total_ok += ok
-    total_all += total
-    print()
-
     print("=== Mason LSP Servers ===")
     ok, total = check_mason_lsp(data_dir, tooling["lsp_servers"])
     total_ok += ok
@@ -286,7 +226,7 @@ def main() -> None:
     total_all += total
     print()
 
-    print("=== Neovim Startup ===")
+    print("=== Neovim Startup and Plugins ===")
     ok, total = check_nvim_startup(nvim, config_dir)
     total_ok += ok
     total_all += total

@@ -3,15 +3,7 @@ return {
   version = "1.*",
   dependencies = { "windwp/nvim-autopairs" },
   opts = {
-    keymap = {
-      preset = "default",
-      ["<CR>"] = {
-        "accept",
-        function()
-          return require("markdown_enter").continue_marker() or require("nvim-autopairs").autopairs_cr()
-        end,
-      },
-    },
+    keymap = { preset = "enter" },
     sources = {
       default = { "lsp", "buffer" },
     },

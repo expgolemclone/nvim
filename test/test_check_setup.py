@@ -1,4 +1,4 @@
-"""Regression checks for declared Mason formatter provisioning."""
+"""Regression checks for Mason provisioning and plugin lock validation."""
 
 import io
 import os
@@ -9,13 +9,15 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-from check_setup import check_formatters
+from check_setup import check_formatters, check_nvim_startup, find_nvim, load_lazy_lock
 
 
 class FormatterProvisioningTests(unittest.TestCase):
     def test_package_and_launcher_are_both_required(self) -> None:
         formatter = {"name": "probe", "package": "probe-package", "executable": "probe"}
-        with tempfile.TemporaryDirectory(prefix="nvim-provisioning-") as tmp:
+        with tempfile.TemporaryDirectory(
+            prefix="nvim-provisioning-", dir="C:/dev/tmp"
+        ) as tmp:
             root = Path(tmp)
             external = root / "external"
             external.mkdir()
@@ -48,6 +50,43 @@ class FormatterProvisioningTests(unittest.TestCase):
                                 check_formatters(data, [formatter]), (0, 1)
                             )
                             package.rmdir()
+
+
+class PluginLockTests(unittest.TestCase):
+    def test_invalid_lock_is_rejected(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        nvim = find_nvim()
+        lock = load_lazy_lock(root)
+        cases = (
+            (
+                "revision",
+                "Installed plugin differs from lazy-lock.json: nvim-treesitter",
+            ),
+            (
+                "missing",
+                "Configured plugin missing from lazy-lock.json: nvim-treesitter",
+            ),
+            ("unused", "Unused plugin in lazy-lock.json: unused-test-plugin"),
+        )
+        for case, message in cases:
+            with self.subTest(case=case):
+                invalid = {name: entry.copy() for name, entry in lock.items()}
+                if case == "revision":
+                    invalid["nvim-treesitter"]["commit"] = "0" * 40
+                elif case == "missing":
+                    del invalid["nvim-treesitter"]
+                else:
+                    invalid["unused-test-plugin"] = {
+                        "branch": "main",
+                        "commit": "0" * 40,
+                    }
+                output = io.StringIO()
+                with (
+                    patch("check_setup.load_lazy_lock", return_value=invalid),
+                    redirect_stdout(output),
+                ):
+                    self.assertEqual(check_nvim_startup(nvim, root), (0, 1))
+                self.assertIn(message, output.getvalue())
 
 
 if __name__ == "__main__":

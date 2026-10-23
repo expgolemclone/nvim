@@ -3,6 +3,7 @@ local config_dir = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h
 vim.opt.rtp:remove(vim.fn.stdpath("config"))
 vim.opt.rtp:remove(vim.fn.stdpath("config") .. "/after")
 vim.opt.rtp:prepend(config_dir)
+vim.opt.rtp:append(config_dir .. "/after")
 
 -- neovim.nixから移植したopts
 vim.opt.number = true
